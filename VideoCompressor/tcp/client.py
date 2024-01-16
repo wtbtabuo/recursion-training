@@ -24,7 +24,7 @@ try:
             data = str(sock.recv(32))
 
             if data:
-                print('Server response: ' + data)
+                print('Server response: ' + data[1:])
             else:
                 break
 

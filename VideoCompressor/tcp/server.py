@@ -32,9 +32,10 @@ while True:
 
         while True:
             data = connection.recv(16)
-            data_str = data.decode('utf-8').strip()
-
             if data:
+                data_str = data.decode('utf-8').strip()
+                print("client sent: ", data_str)
+
                 if data_str in faker_methods:
                     res = faker_methods[data_str]()
                     connection.sendall(res.encode())
