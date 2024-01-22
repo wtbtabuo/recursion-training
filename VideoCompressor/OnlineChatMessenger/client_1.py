@@ -1,28 +1,58 @@
 import socket
-import threading
+import json
 
-def receive_messages(sock):
-    while True:
-        data, address = sock.recvfrom(4096)
-        if data:
-            friend_name_len = data[0]
-            friend_name = data[1:1+friend_name_len].decode()
-            friend_message = data[1+friend_name_len:].decode()
-            print('{}: {}'.format(friend_name, friend_message))
+def send_data(sock, server_address, room_name, operation, state, payload):
+    # ヘッダーとボディをJSON形式で作成
+    data = {
+        "header": {
+            "room_name_size": len(room_name),
+            "operation": operation,
+            "state": state,
+            "payload_size": len(payload)
+        },
+        "body": {
+            "room_name": room_name,
+            "payload": payload
+        }
+    }
 
-def send_messages(sock, server_address, my_name, usernamelen):
-    while True:
-        my_message = input("{}: ".format(my_name))
-        data = usernamelen.to_bytes(1, 'big') + my_name.encode() + my_message.encode()
-        sock.sendto(data, server_address)
+    # JSON形式の文字列に変換
+    json_data = json.dumps(data)
 
-my_name = input('What is your user name?\n')
-usernamelen = len(my_name)
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # データをバイト列にエンコードして送信
+    sock.sendto(json_data.encode(), server_address)
+
+def wait_res(sock):
+    data = sock.recv(255)
+    if not data:
+        return
+    print(json.loads(data.decode()))
+
+
+# サーバーの接続設定
 server_address = ('127.0.0.1', 9002)
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(server_address)
 
-# スレッドでメッセージの受信を開始
-threading.Thread(target=receive_messages, args=(sock,)).start()
+# ユーザー入力
+init_operation = input('1か2を入力してください。\n既存のチャットルームに入る: 1 / 新規のチャットルームを作成する: 2\n')
+if init_operation not in ['1', '2']:
+    print('1か2を入力してください')
+else:
+    try:
+            
+        operation = int(init_operation)
+        state = 0  # 仮の状態設定
+        room_name = input('チャットルーム名を入力してください。')
+        payload = input('ユーザー名を入力してください。')
 
-# メッセージの送信
-send_messages(sock, server_address, my_name, usernamelen)
+        # データの送信
+        send_data(sock, server_address, room_name, operation, state, payload)
+
+        # サーバーからのレスポンスを待つ
+        while True:
+            wait_res(sock)
+    except:
+        # ソケットのクローズ
+        sock.close()
+        print('connection closed')
