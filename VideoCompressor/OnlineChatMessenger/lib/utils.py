@@ -1,14 +1,5 @@
 import socket
 
-def ip_address_input():
-    while True:
-        ip_address = input('サーバーのIPアドレスを入力してください: ')
-        if len(ip_address) == 0:
-            print('入力は必須です。')
-        else:
-            break
-    return ip_address
-
 def user_inputs():
     # 新規チャット作成 or 既存チャット入室
     while True:
