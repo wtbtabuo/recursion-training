@@ -1,58 +1,129 @@
-import socket
 import json
+import threading
 
-def send_data(sock, server_address, room_name, operation, state, payload):
-    # ヘッダーとボディをJSON形式で作成
-    data = {
-        "header": {
-            "room_name_size": len(room_name),
-            "operation": operation,
-            "state": state,
-            "payload_size": len(payload)
-        },
-        "body": {
-            "room_name": room_name,
-            "payload": payload
+from lib.utils import user_inputs
+from lib.utils import create_connection
+from lib.utils import ip_address_input
+
+class Client:
+    def __init__(self):
+        self.address = '127.0.0.1'
+        self.tcp_port = 9002
+        self.udp_port = 9003
+        self.token = None
+        self.data = {
+            'header': {},
+            'body': {}
         }
-    }
+        self.is_exited = False
 
-    # JSON形式の文字列に変換
-    json_data = json.dumps(data)
+    def generate_tcp_packet(self, room_name, operation, state, user_name):
+        header = self.data['header']
+        header['room_name_size'] = len(room_name)
+        header['operation'] = operation
+        header['state'] = state
+        header['user_name_size'] = len(user_name)
 
-    # データをバイト列にエンコードして送信
-    sock.sendto(json_data.encode(), server_address)
+        body = self.data['body']
+        body['room_name'] = room_name
+        body['user_name'] = user_name
+        
+        return 
 
-def wait_res(sock):
-    data = sock.recv(255)
-    if not data:
-        return
-    print(json.loads(data.decode()))
+    def init_operation(self):
+        # TCPコネクション
+        sock = create_connection('TCP')
+        sock.connect((self.address, self.tcp_port))
 
-
-# サーバーの接続設定
-server_address = ('127.0.0.1', 9002)
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(server_address)
-
-# ユーザー入力
-init_operation = input('1か2を入力してください。\n既存のチャットルームに入る: 1 / 新規のチャットルームを作成する: 2\n')
-if init_operation not in ['1', '2']:
-    print('1か2を入力してください')
-else:
-    try:
+        try:
+            # ユーザー入力
+            operation, room_name, user_name = user_inputs()
             
-        operation = int(init_operation)
-        state = 0  # 仮の状態設定
-        room_name = input('チャットルーム名を入力してください。')
-        payload = input('ユーザー名を入力してください。')
+            # oepration=0 -> チャットルーム新規作成, state=0 -> ホストユーザー
+            # oepration=1 -> 既存チャット入室, state=1  -> 一般ユーザー
+            state = operation 
 
-        # データの送信
-        send_data(sock, server_address, room_name, operation, state, payload)
+            # tcpパケットのインスタンス作成
+            self.generate_tcp_packet(room_name, operation, state, user_name)
 
-        # サーバーからのレスポンスを待つ
+            data = json.dumps(self.data)
+            sock.sendall(data.encode())
+
+            # サーバーからのレスポンスを待つ
+            while True:
+                data = sock.recv(255)
+                if data:
+                    break
+            
+            response = json.loads(data.decode())
+            if response.get('status_code') == 200 and state == 0: 
+                self.token = response['token']
+                print("新規チャットルーム'{}'が作成されました".format(room_name))
+                return True
+            elif response.get('status_code') == 200 and state == 1: 
+                self.token = response['token']
+                print("チャットルーム'{}'に入室しました".format(room_name))
+                return True
+            elif response.get('status_code') == 500:
+                print(response.get('message'))
+                return False       
+
+        finally:
+            sock.close()
+
+    def generate_udp_packet(self, message):
+        # tcpコネクション作成時の余計な部分を削除
+        if 'operation' in self.data['header']:
+            del self.data['header']['operation']
+        if 'state' in self.data['header']:
+            del self.data['header']['state']
+
+        self.data['header']['token_size'] = len(self.token)
+        self.data['body']['token'] = self.token
+        self.data['body']['message'] = message
+
+        return 
+
+    def receive_messages(self, sock):
         while True:
-            wait_res(sock)
-    except:
-        # ソケットのクローズ
-        sock.close()
-        print('connection closed')
+            try:
+                data, address = sock.recvfrom(4094)
+                if data:
+                    data = json.loads(data.decode())
+                    assert data['body']['message'] != "host exits"
+                    name = data['body']['user_name']
+                    message = data['body']['message']
+                    print('{}: {}'.format(name, message))
+
+            except AssertionError:
+                print('チャットルームを退出しました')
+                break
+    def send_messages(self, sock):
+        try:
+            while True:
+                my_message = input("{}: ".format(self.data['body']['user_name']))
+                if my_message != 'exit':
+                    self.generate_udp_packet(my_message)
+                    sock.sendto(json.dumps(self.data).encode(), (self.address, self.udp_port))
+                else:
+                    self.is_exited = True
+                    break
+        finally:
+            self.generate_udp_packet(my_message)
+            sock.sendto(json.dumps(self.data).encode(), (self.address, self.udp_port))
+            print('チャットルームを退出しました')
+            sock.close()
+if __name__ == "__main__":
+    # 初期設定操作
+    client = Client()
+    client.address = ip_address_input()
+    while True:
+        if client.init_operation():
+            # スレッドでメッセージの送受信を開始
+            sock = create_connection('UDP')
+            threading.Thread(target=client.receive_messages, args=(sock,)).start() 
+            client.send_messages(sock)
+        
+        if client.is_exited:  # チャットルームから退出した場合
+            client.is_exited = False  # フラグをリセットしてループを続ける
+            continue
