@@ -86,21 +86,21 @@ class Client:
 
     def receive_messages(self, sock):
         while True:
-
-            data, address = sock.recvfrom(4094)
-            if data:
-                data = json.loads(data.decode())
-                # exitメッセージではないことの確認
-                if data['body']['message'] in ['host exited', '{} exited'.format(self.data['body']['user_name'])]:
-                    print('\rチャットルームが削除されました\n')
-                    break
-                name = data['body']['user_name']
-                message = data['body']['message']
-                sys.stdout.write('\r' + ' ' * (len(self.data['body']['user_name']) + 2))  # 現在の行をクリア
-                sys.stdout.write('\r{}: {}\n'.format(name, message))  # 受信メッセージを表示
-                sys.stdout.write('{}: '.format(self.data['body']['user_name']))  # プロンプトを再表示
-                sys.stdout.flush()
-
+            try:
+                data, address = sock.recvfrom(4094)
+                if data:
+                    data = json.loads(data.decode())
+                    assert data['body']['message'] != 'host exited'
+                    assert data['body']['message'] != '{} exited'.format(self.data['body']['user_name'])
+                    name = data['body']['user_name']
+                    message = data['body']['message']
+                    sys.stdout.write('\r' + ' ' * (len(self.data['body']['user_name']) + 2))  # 現在の行をクリア
+                    sys.stdout.write('\r{}: {}\n'.format(name, message))  # 受信メッセージを表示
+                    sys.stdout.write('{}: '.format(self.data['body']['user_name']))  # プロンプトを再表示
+                    sys.stdout.flush()
+            except AssertionError:
+                print('\rチャットルームが削除されました')
+                break
 
     def send_messages(self, sock):
         try:
