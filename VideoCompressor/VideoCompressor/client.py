@@ -1,7 +1,10 @@
 import json
+import os
 import tkinter.filedialog
 
 from lib import utils
+
+FILE_PATH = os.getcwd() # mp4ファイルが存在するディレクトリを指定する。
 
 class Client:
     def __init__(self):
@@ -28,27 +31,57 @@ class Client:
                 data = data.decode()
                 print(json.dumps(data))
 
-    def split_packt(self, data, packet_size=1400):
+    def split_packet(self, data, packet_size=1400):
         # データをパケットサイズに分割して送信
+        packet_list = []
         for i in range(0, len(data), packet_size):
             packet = data[i:i+packet_size]
-            self.send_messages(packet)
-    @staticmethod
-    def upload_mp4_fine():
-        init_dir = '/mnt/c/Users/keita/Downloads/'
-        target_file = tkinter.filedialog.askopenfilename(
-            initialdir=init_dir,
-            filetypes=[("mp4ファイル", "*.mp4")]
-            )
-        return target_file
+            packet_list.append(packet)
+        return packet_list
+
+    def choose_and_check_mp4_file(self):
+        # アップロードするファイル選択と、ファイルサイズが4GB以下かどうかのバリデーション
+        while True:
+            target_file = tkinter.filedialog.askopenfilename(
+                initialdir=FILE_PATH,
+                filetypes=[("mp4ファイル", "*.mp4")]
+                )
+            if not target_file:
+                print('ファイルを選択してください')
+                continue
+            self.file = target_file
+            file_size = os.path.getsize(target_file)
+            if file_size > 4 * 1024 * 1024 * 1024:
+                print('ファイルサイズが4GBを超えています。')
+                continue
+            else:
+                self.file_size = file_size
+
+            self.file_name = os.path.basename(target_file)
+            return 
+    
+    def generate_tcp_packet(self, operation):
+        if operation == 'init':
+            data = {
+                'file_name': self.file_name,
+                'file_size': self.file_size
+            }
+            self.send_messages(data)
+        
+        else:
+            packet_list = self.split_packet(self.file)
+            for packet in packet_list:
+                self.send_messages(packet)
+        print('送信完了しました')
+
 if __name__ == '__main__':
     client = Client()
     try:
         client.connect()
-        mp4_data = client.upload_mp4_fine()
-        print(len(mp4_data))
-        # client.split_packt(user_input)
-        # client.receive_messages()
+        client.choose_and_check_mp4_file()
+        client.generate_tcp_packet(operation='init') # ファイルサイズデータを送信
+        client.generate_tcp_packet(operation=None) # mp4ファイルを送信
+        client.receive_messages()
     finally:
         client.disconnect()
     
