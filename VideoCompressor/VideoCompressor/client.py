@@ -20,9 +20,12 @@ class Client:
         self.client_socket.close()
         print('connection closed')
 
-    def send_messages(self, data):
+    def send_str_messages(self, data):
         user_input = json.dumps(data)
         self.client_socket.sendto(user_input.encode(), (self.address, self.port))
+
+    def send_bin_messages(self, data):
+        self.client_socket.sendto(data, (self.address, self.port))
 
     def receive_messages(self):
         while True:
@@ -30,14 +33,6 @@ class Client:
             if data:
                 data = data.decode()
                 print(json.dumps(data))
-
-    def split_packet(self, data, packet_size=1400):
-        # データをパケットサイズに分割して送信
-        packet_list = []
-        for i in range(0, len(data), packet_size):
-            packet = data[i:i+packet_size]
-            packet_list.append(packet)
-        return packet_list
 
     def choose_and_check_mp4_file(self):
         # アップロードするファイル選択と、ファイルサイズが4GB以下かどうかのバリデーション
@@ -49,38 +44,38 @@ class Client:
             if not target_file:
                 print('ファイルを選択してください')
                 continue
-            self.file = target_file
+
             file_size = os.path.getsize(target_file)
             if file_size > 4 * 1024 * 1024 * 1024:
                 print('ファイルサイズが4GBを超えています。')
                 continue
             else:
-                self.file_size = file_size
+                pass
 
-            self.file_name = os.path.basename(target_file)
-            return 
+            return target_file, file_size
     
-    def generate_tcp_packet(self, operation):
-        if operation == 'init':
-            data = {
-                'file_name': self.file_name,
-                'file_size': self.file_size
-            }
-            self.send_messages(data)
-        
-        else:
-            packet_list = self.split_packet(self.file)
-            for packet in packet_list:
-                self.send_messages(packet)
+    def generate_tcp_packet(self, path, size):
+        data = {
+            'file_name': path.split('/')[-1],
+            'file_size': size
+        }
+        self.send_str_messages(data)
+    
+        with open(file_path, 'rb') as file:
+            while True:
+                data = file.read(1400)
+                if not data:
+                    break
+                self.send_bin_messages(data)
         print('送信完了しました')
 
 if __name__ == '__main__':
     client = Client()
     try:
         client.connect()
-        client.choose_and_check_mp4_file()
-        client.generate_tcp_packet(operation='init') # ファイルサイズデータを送信
-        client.generate_tcp_packet(operation=None) # mp4ファイルを送信
+        file_path, file_size = client.choose_and_check_mp4_file()
+        if file_path and file_size:
+            client.generate_tcp_packet(file_path, file_size)
         client.receive_messages()
     finally:
         client.disconnect()
