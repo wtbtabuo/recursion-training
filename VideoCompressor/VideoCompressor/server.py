@@ -29,7 +29,6 @@ class Server:
         while True:
             data = client_socket.recv(1400)
             if not data:
-                print(self.file_data)
                 break
 
             if self.file_name is None:
