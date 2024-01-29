@@ -43,7 +43,7 @@ class Client:
                 )
             if not target_file:
                 print('ファイルを選択してください')
-                continue
+                continue    
 
             file_size = os.path.getsize(target_file)
             if file_size > 4 * 1024 * 1024 * 1024:

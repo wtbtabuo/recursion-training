@@ -9,6 +9,7 @@ class Server:
         self.address = '127.0.0.1'
         self.port = 9002
         self.file_name = None
+        self.file_size = 1
         self.file_data = b''
     
     def connect(self):
@@ -26,27 +27,22 @@ class Server:
         if address:
             print('connection from {}'.format(address))
 
-        while True:
+        while len(self.file_data) != self.file_size:
             data = client_socket.recv(1400)
-            if not data:
-                break
 
             if self.file_name is None:
                 meta_data = json.loads(data.decode())
                 if meta_data.get('file_name'):
                     self.file_name = meta_data['file_name']
+                    self.file_size = meta_data['file_size']
             else:
                 self.file_data += data
 
-    def save_file(self):
-        with open('copy'+self.file_name, 'wb') as f:
-            f.write(self.file_data)
 
 if __name__ == '__main__':
     server = Server()
     try:
         server.connect()
         server.receive_packet()
-        server.save_file()
     finally:
         server.disconnect()
