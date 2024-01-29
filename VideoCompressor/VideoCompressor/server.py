@@ -22,27 +22,36 @@ class Server:
         self.server_socket.close()
         print('connection closed')
 
-    def receive_packet(self):
+    def receive_video_packet(self):
         client_socket, address = self.server_socket.accept()
         if address:
             print('connection from {}'.format(address))
 
-        while len(self.file_data) != self.file_size:
-            data = client_socket.recv(1400)
+        try:
+            while len(self.file_data) != self.file_size:
+                data = client_socket.recv(1400)
 
-            if self.file_name is None:
-                meta_data = json.loads(data.decode())
-                if meta_data.get('file_name'):
-                    self.file_name = meta_data['file_name']
-                    self.file_size = meta_data['file_size']
-            else:
-                self.file_data += data
+                if self.file_name is None:
+                    meta_data = json.loads(data.decode())
+                    if meta_data.get('file_name'):
+                        self.file_name = meta_data['file_name']
+                        self.file_size = meta_data['file_size']
+                else:
+                    self.file_data += data
+        finally:
+            data = {'status_code': 200}
+            client_socket.sendall(json.dumps(data).encode())
+            print('動画の受信完了しました')
 
+    def receive_order_packet(self):
+        while True:
+            pass
 
 if __name__ == '__main__':
     server = Server()
     try:
         server.connect()
-        server.receive_packet()
+        server.receive_video_packet()
+        server.receive_order_packet()
     finally:
         server.disconnect()

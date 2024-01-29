@@ -22,17 +22,17 @@ class Client:
 
     def send_str_messages(self, data):
         user_input = json.dumps(data)
-        self.client_socket.sendto(user_input.encode(), (self.address, self.port))
+        self.client_socket.sendall(user_input.encode())
 
     def send_bin_messages(self, data):
-        self.client_socket.sendto(data, (self.address, self.port))
+        self.client_socket.sendall(data)
 
     def receive_messages(self):
         while True:
-            data, address = self.client_socket.recv(4096)
+            data = self.client_socket.recv(4096)
             if data:
                 data = data.decode()
-                print(json.dumps(data))
+                print(json.loads(data))
 
     def choose_and_check_mp4_file(self):
         # アップロードするファイル選択と、ファイルサイズが4GB以下かどうかのバリデーション
