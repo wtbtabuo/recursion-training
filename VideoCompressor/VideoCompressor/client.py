@@ -90,7 +90,7 @@ class Client:
             else:
                 break
         
-        if operation == 1:
+        if int(operation) == 1:
             req = {'operation_id': 1}
             self.send_str_messages(req)
         

@@ -26,6 +26,7 @@ class Server:
         client_socket, address = self.server_socket.accept()
         if address:
             print('connection from {}'.format(address))
+            self.client_socket = client_socket
 
         try:
             while len(self.file_data) != self.file_size:
@@ -45,7 +46,9 @@ class Server:
 
     def receive_order_packet(self):
         while True:
-            pass
+            data = self.client_socket.recv(1400)
+            if data:
+                print(json.loads(data.decode()))
 
 if __name__ == '__main__':
     server = Server()
