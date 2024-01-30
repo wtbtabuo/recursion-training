@@ -1,5 +1,8 @@
 import json
-import time
+import os
+import subprocess
+import tempfile
+
 from lib import utils
 
 
@@ -44,17 +47,53 @@ class Server:
             client_socket.sendall(json.dumps(data).encode())
             print('動画の受信完了しました')
 
-    def receive_order_packet(self):
+    def save_bytes_to_tempfile(self):
+        # 一時的にバイトデータを動画データに変換
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_file.write(self.file_data)
+        temp_file.close()
+        return temp_file.name
+    
+    def delete_tempfile(self, file_path):
+        # 一時ファイルを削除
+        os.remove(file_path)
+
+    def handle_order(self):
         while True:
             data = self.client_socket.recv(1400)
             if data:
-                print(json.loads(data.decode()))
+                formed_data = json.loads(data.decode())
+
+                # インスタンスに存在するバイトデータをmp4に一時的に変換
+                vide_file_path = self.save_bytes_to_tempfile()
+
+                if formed_data.get('operation_id') == 1:
+                    self.compress_video(vide_file_path)
+
+                self.delete_tempfile(vide_file_path)
+                
+
+    def get_vide_info(self):
+        video_path = self.save_bytes_to_tempfile()
+        print(video_path)
+        cmd = [
+                'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+                '-show_entries', 'stream=width,height,bit_rate',
+                '-of', 'json', video_path
+            ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return json.loads(result.stdout)
+    
+    def compress_video(self, file_path):
+        video_info = self.get_vide_info()
+        print(video_info)
+
 
 if __name__ == '__main__':
     server = Server()
     try:
         server.connect()
         server.receive_video_packet()
-        server.receive_order_packet()
+        server.handle_order()
     finally:
         server.disconnect()
