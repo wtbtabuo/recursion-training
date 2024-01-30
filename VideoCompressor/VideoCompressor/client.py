@@ -6,7 +6,6 @@ from lib import utils
 
 # mp4ファイルが存在するディレクトリを指定する。
 current_dir = os.getcwd() 
-# print(os.path.join(parent_dir, 'input'))
 FILE_PATH = os.path.join(current_dir, 'input')
 
 class Client:

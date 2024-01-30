@@ -5,7 +5,9 @@ import tempfile
 
 from lib import utils
 
-
+# mp4ファイルを吐き出すディレクトリを指定
+current_dir = os.getcwd() 
+OUT_PUT = os.path.join(current_dir, 'output', 'compressed.mp4')
 
 class Server:
     def __init__(self):
@@ -71,11 +73,10 @@ class Server:
                     self.compress_video(vide_file_path)
 
                 self.delete_tempfile(vide_file_path)
-                
 
     def get_vide_info(self):
+        # 動画のwidth, height, bit_rateを出力
         video_path = self.save_bytes_to_tempfile()
-        print(video_path)
         cmd = [
                 'ffprobe', '-v', 'error', '-select_streams', 'v:0',
                 '-show_entries', 'stream=width,height,bit_rate',
@@ -85,9 +86,22 @@ class Server:
         return json.loads(result.stdout)
     
     def compress_video(self, file_path):
+        # 動画のbit_rateを元に、圧縮比率を決め手圧縮
         video_info = self.get_vide_info()
-        print(video_info)
+        bit_rate = int(video_info['streams'][0]['bit_rate']) 
 
+        if bit_rate > 5000000: # ビットレートが5Mbpsを超える場合
+            taraget_bite_rate = '2500k'
+        elif bit_rate < 2000000:  # ビットレートが2Mbps未満の場合
+            target_bitrate = '1500k'
+        else:
+            target_bitrate = str(bit_rate // 2) + 'k'
+
+        cmd = [
+        'ffmpeg', '-i', file_path, '-b:v', target_bitrate,
+        '-vcodec', 'libx264', '-preset', 'medium', OUT_PUT
+        ]
+        subprocess.run(cmd)
 
 if __name__ == '__main__':
     server = Server()
