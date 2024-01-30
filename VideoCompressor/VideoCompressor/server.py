@@ -7,7 +7,7 @@ from lib import utils
 
 # mp4ファイルを吐き出すディレクトリを指定
 current_dir = os.getcwd() 
-OUT_PUT = os.path.join(current_dir, 'output', 'compressed.mp4')
+OUTPUT_DIR = os.path.join(current_dir, 'output')
 
 class Server:
     def __init__(self):
@@ -47,7 +47,6 @@ class Server:
         finally:
             data = {'status_code': 200}
             client_socket.sendall(json.dumps(data).encode())
-            print('動画の受信完了しました')
 
     def save_bytes_to_tempfile(self):
         # 一時的にバイトデータを動画データに変換
@@ -69,9 +68,11 @@ class Server:
                 # インスタンスに存在するバイトデータをmp4に一時的に変換
                 vide_file_path = self.save_bytes_to_tempfile()
 
-                if formed_data.get('operation_id') == 1:
+                if formed_data.get('operation_id') == 1: # 圧縮
                     self.compress_video(vide_file_path)
-
+                elif formed_data.get('operation_id') == 2: # 解像度変更
+                    resolution_type = formed_data.get('resolution')
+                    self.change_resolution(vide_file_path, resolution_type)
                 self.delete_tempfile(vide_file_path)
 
     def get_vide_info(self):
@@ -97,12 +98,33 @@ class Server:
         else:
             target_bitrate = str(bit_rate // 2) + 'k'
 
+        out_put_path = os.path.join(OUTPUT_DIR, 'compressed_'+self.file_name,)
         cmd = [
         'ffmpeg', '-i', file_path, '-b:v', target_bitrate,
-        '-vcodec', 'libx264', '-preset', 'medium', OUT_PUT
+        '-vcodec', 'libx264', '-preset', 'medium', out_put_path
         ]
         subprocess.run(cmd)
+        data = {'status_code': 200}
+        self.client_socket.sendall(json.dumps(data).encode())
 
+    def change_resolution(self, input_path, resolution):
+        if resolution == 1:
+            width, height = 1920, 1080  
+        elif resolution == 2:
+            width, height = 1280, 720  
+        else:
+            width, height = 720, 480 
+
+        output_path = os.path.join(OUTPUT_DIR, f'{width}*{height}'+self.file_name)
+        cmd = [
+            'ffmpeg', '-i', input_path, '-vf', f'scale={width}:{height}',
+            '-c:a', 'copy', 
+            output_path
+        ]
+        subprocess.run(cmd)
+        data = {'status_code': 200}
+        self.client_socket.sendall(json.dumps(data).encode())
+        
 if __name__ == '__main__':
     server = Server()
     try:
