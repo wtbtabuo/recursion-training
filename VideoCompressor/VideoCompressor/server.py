@@ -99,7 +99,6 @@ class Server:
             subprocess.run(cmd, check=True)
             data = {'status_code': 200}
         except subprocess.CalledProcessError as e:
-            print(e)
             data = {'status_code': 500}
         except Exception as e:
             data = {'status_code': 500}
@@ -156,7 +155,6 @@ class Server:
 
     def crop_and_covert_video(self, file_path, video_type, time_range):
         out_put_path = os.path.join(OUTPUT_DIR, self.file_name[:-3]+f'{video_type}',)
-        print(out_put_path)
         if video_type == 'gif':
             cmd = ffmpeg_cmds.convert_to_gif(file_path, time_range, out_put_path)
         elif video_type == 'webm':
