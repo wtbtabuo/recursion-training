@@ -70,9 +70,15 @@ class Server:
 
                 if formed_data.get('operation_id') == 1: # 圧縮
                     self.compress_video(vide_file_path)
+
                 elif formed_data.get('operation_id') == 2: # 解像度変更
                     resolution_type = formed_data.get('resolution')
                     self.change_resolution(vide_file_path, resolution_type)
+
+                elif formed_data.get('operation_id') == 3: # アスペクト比変更
+                    ratio= formed_data.get('ratio')
+                    self.change_aspect_ratio(vide_file_path, ratio)
+
                 self.delete_tempfile(vide_file_path)
 
     def get_vide_info(self):
@@ -107,7 +113,7 @@ class Server:
         data = {'status_code': 200}
         self.client_socket.sendall(json.dumps(data).encode())
 
-    def change_resolution(self, input_path, resolution):
+    def change_resolution(self, file_path, resolution):
         if resolution == 1:
             width, height = 1920, 1080  
         elif resolution == 2:
@@ -115,16 +121,29 @@ class Server:
         else:
             width, height = 720, 480 
 
-        output_path = os.path.join(OUTPUT_DIR, f'{width}*{height}'+self.file_name)
+        output_path = os.path.join(OUTPUT_DIR, f'{width}*{height}_'+self.file_name)
         cmd = [
-            'ffmpeg', '-i', input_path, '-vf', f'scale={width}:{height}',
+            'ffmpeg', '-i', file_path, '-vf', f'scale={width}:{height}',
             '-c:a', 'copy', 
             output_path
         ]
         subprocess.run(cmd)
         data = {'status_code': 200}
         self.client_socket.sendall(json.dumps(data).encode())
-        
+
+    def change_aspect_ratio(self, file_path, ratio):
+        video_info = self.get_vide_info()
+        bit_rate = video_info['streams'][0]['bit_rate'] # 動画のビットレート取得
+
+        out_put_path = os.path.join(OUTPUT_DIR, 'aspect_ratio_'+ratio+self.file_name,)
+        cmd = [
+            'ffmpeg', '-i', file_path, '-b:v', bit_rate,
+            '-vcodec', 'libx264', '-preset', 'medium', '-aspect', ratio, out_put_path
+        ]
+        subprocess.run(cmd)
+        data = {'status_code': 200}
+        self.client_socket.sendall(json.dumps(data).encode())
+
 if __name__ == '__main__':
     server = Server()
     try:

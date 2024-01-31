@@ -116,6 +116,22 @@ class Client:
             status = self.receive_messages()
             print('解像度の変更に{}'.format(status))
 
+        elif int(operation) == 3:
+            while True:
+                ratio = input('アスペクト比を入力してください\n(例) 16:9\n入力: ')
+                ratio = ratio.replace(' ', '')
+                parts = ratio.split(':')
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    break
+                else:
+                    print('入力値が不正です')
+                    continue
+
+            req = {'operation_id': 3, 'ratio': ratio}
+            self.send_str_messages(req)
+            status = self.receive_messages()
+            print('アスペクト比の変更に{}'.format(status))
+
 if __name__ == '__main__':
     client = Client()
     try:
