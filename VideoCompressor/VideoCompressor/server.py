@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 
 from lib import utils
+from lib import ffmpeg_cmds
 
 # mp4ファイルを吐き出すディレクトリを指定
 current_dir = os.getcwd() 
@@ -84,11 +85,7 @@ class Server:
     def get_vide_info(self):
         # 動画のwidth, height, bit_rateを出力
         video_path = self.save_bytes_to_tempfile()
-        cmd = [
-                'ffprobe', '-v', 'error', '-select_streams', 'v:0',
-                '-show_entries', 'stream=width,height,bit_rate',
-                '-of', 'json', video_path
-            ]
+        cmd = ffmpeg_cmds.get_vide_info(video_path)
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return json.loads(result.stdout)
     
@@ -100,15 +97,13 @@ class Server:
         if bit_rate > 5000000: # ビットレートが5Mbpsを超える場合
             taraget_bite_rate = '2500k'
         elif bit_rate < 2000000:  # ビットレートが2Mbps未満の場合
-            target_bitrate = '1500k'
+            taraget_bite_rate = '1500k'
         else:
-            target_bitrate = str(bit_rate // 2) + 'k'
+            taraget_bite_rate = str(bit_rate // 2) + 'k'
 
         out_put_path = os.path.join(OUTPUT_DIR, 'compressed_'+self.file_name,)
-        cmd = [
-        'ffmpeg', '-i', file_path, '-b:v', target_bitrate,
-        '-vcodec', 'libx264', '-preset', 'medium', out_put_path
-        ]
+
+        cmd = ffmpeg_cmds.compress(file_path, out_put_path, taraget_bite_rate)
         subprocess.run(cmd)
         data = {'status_code': 200}
         self.client_socket.sendall(json.dumps(data).encode())
@@ -122,11 +117,8 @@ class Server:
             width, height = 720, 480 
 
         output_path = os.path.join(OUTPUT_DIR, f'{width}*{height}_'+self.file_name)
-        cmd = [
-            'ffmpeg', '-i', file_path, '-vf', f'scale={width}:{height}',
-            '-c:a', 'copy', 
-            output_path
-        ]
+
+        cmd = ffmpeg_cmds.change_resolution(file_path, width, height, output_path)
         subprocess.run(cmd)
         data = {'status_code': 200}
         self.client_socket.sendall(json.dumps(data).encode())
@@ -136,10 +128,7 @@ class Server:
         bit_rate = video_info['streams'][0]['bit_rate'] # 動画のビットレート取得
 
         out_put_path = os.path.join(OUTPUT_DIR, 'aspect_ratio_'+ratio+self.file_name,)
-        cmd = [
-            'ffmpeg', '-i', file_path, '-b:v', bit_rate,
-            '-vcodec', 'libx264', '-preset', 'medium', '-aspect', ratio, out_put_path
-        ]
+        cmd = ffmpeg_cmds.change_aspect_ratio(file_path, bit_rate, ratio, out_put_path)
         subprocess.run(cmd)
         data = {'status_code': 200}
         self.client_socket.sendall(json.dumps(data).encode())
