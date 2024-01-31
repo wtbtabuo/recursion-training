@@ -92,6 +92,7 @@ class Server:
                     self.crop_and_covert_video(video_file_path, video_type, time_range)
                     
                 self.delete_tempfile(video_file_path)
+                return 
 
     def execute_commands(seld, cmd):
         try:
