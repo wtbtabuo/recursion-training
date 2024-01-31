@@ -67,32 +67,40 @@ class Server:
                 formed_data = json.loads(data.decode())
 
                 # インスタンスに存在するバイトデータをmp4に一時的に変換
-                vide_file_path = self.save_bytes_to_tempfile()
+                video_file_path = self.save_bytes_to_tempfile()
 
                 if formed_data.get('operation_id') == 1: # 圧縮
-                    self.compress_video(vide_file_path)
+                    self.compress_video(video_file_path)
 
                 elif formed_data.get('operation_id') == 2: # 解像度変更
                     resolution_type = formed_data.get('resolution')
-                    self.change_resolution(vide_file_path, resolution_type)
+                    self.change_resolution(video_file_path, resolution_type)
 
                 elif formed_data.get('operation_id') == 3: # アスペクト比変更
                     ratio= formed_data.get('ratio')
-                    self.change_aspect_ratio(vide_file_path, ratio)
+                    self.change_aspect_ratio(video_file_path, ratio)
 
                 elif formed_data.get('operation_id') == 4:
                     mp3_file_name = self.file_name[:-4] + '.mp3'
                     output_vide_path = os.path.join(OUTPUT_DIR, mp3_file_name)
-                    cmd = ffmpeg_cmds.extract_mp3(vide_file_path, output_vide_path)
+                    cmd = ffmpeg_cmds.extract_mp3(video_file_path, output_vide_path)
                     self.execute_commands(cmd)
+
+                elif formed_data.get('operation_id') == 5:
+                    video_type = 'gif' if formed_data.get('video_type') == str(1) else 'webm'
+                    time_range = formed_data.get('timerange')
+                    self.crop_and_covert_video(video_file_path, video_type, time_range)
                     
-                self.delete_tempfile(vide_file_path)
+                self.delete_tempfile(video_file_path)
 
     def execute_commands(seld, cmd):
         try:
-            subprocess.run(cmd)
+            subprocess.run(cmd, check=True)
             data = {'status_code': 200}
-        except:
+        except subprocess.CalledProcessError as e:
+            print(e)
+            data = {'status_code': 500}
+        except Exception as e:
             data = {'status_code': 500}
         return data
     
@@ -142,6 +150,16 @@ class Server:
         out_put_path = os.path.join(OUTPUT_DIR, 'aspect_ratio_'+ratio+self.file_name,)
 
         cmd = ffmpeg_cmds.change_aspect_ratio(file_path, bit_rate, ratio, out_put_path)
+        result = self.execute_commands(cmd)
+        self.client_socket.sendall(json.dumps(result).encode())
+
+    def crop_and_covert_video(self, file_path, video_type, time_range):
+        out_put_path = os.path.join(OUTPUT_DIR, self.file_name[:-3]+f'{video_type}',)
+        print(out_put_path)
+        if video_type == 'gif':
+            cmd = ffmpeg_cmds.convert_to_gif(file_path, time_range, out_put_path)
+        elif video_type == 'webm':
+            cmd = ffmpeg_cmds.convert_to_webm(file_path, time_range, out_put_path)
         result = self.execute_commands(cmd)
         self.client_socket.sendall(json.dumps(result).encode())
 

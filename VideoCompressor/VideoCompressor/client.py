@@ -138,6 +138,29 @@ class Client:
             status = self.receive_messages()
             print('MP3の抽出に変更に{}'.format(status))
 
+        elif int(operation) == 5:
+            while True:
+                time_range = input('時間範囲を指定してください\n(例) 5~10\n入力: ')
+                time_range = time_range.replace(' ', '')
+                time_range = time_range.split('~')
+                if len(time_range) == 2 and time_range[0].isdigit() and time_range[1].isdigit():
+                    break
+                else:
+                    print('入力値が不正です')
+                    continue
+            while True:
+                video_type = input('動画の形式を1か2で入入力してください\n1: GIF, 2: WEBM\n入力: ')
+                if int(video_type) in [1, 2]:
+                    break
+                else:
+                    print('入力値が不正です')
+                    continue
+
+            req = {'operation_id': 5, 'timerange': time_range, 'video_type': video_type}
+            self.send_str_messages(req)
+            status = self.receive_messages()
+            print('動画の抽出に{}'.format(status))
+
 if __name__ == '__main__':
     client = Client()
     try:

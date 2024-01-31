@@ -33,3 +33,30 @@ def extract_mp3(input_file_path, output_vide_path):
         'ffmpeg', '-i', input_file_path, '-q:a', '0', '-map', 'a?', output_vide_path,       
         ]
     return cmd
+
+def convert_to_gif(input_file_path, time_range, output_vide_path):
+    cmd = [
+        'ffmpeg',
+        '-ss', str(time_range[0]),            
+        '-t', str(int(time_range[1]) - int(time_range[0])),          
+        '-i', input_file_path,                     
+        '-vf', 'fps=10,scale=320:-1:flags=lanczos',  
+        '-c:v', 'gif',                        
+        '-f', 'gif',                          
+        output_vide_path                       
+        ]
+    return cmd
+
+def convert_to_webm(input_file_path, time_range, output_vide_path):
+    cmd = [
+        'ffmpeg',
+        '-ss', str(time_range[0]),                
+        '-t', str(int(time_range[1]) - int(time_range[0])),              
+        '-i', input_file_path,                         
+        '-c:v', 'libvpx-vp9',                     
+        '-c:a', 'libvorbis',                      
+        '-b:v', '1M',                             
+        '-b:a', '128k',                           
+        output_vide_path                          
+        ]
+    return cmd
