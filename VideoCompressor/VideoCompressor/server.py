@@ -80,6 +80,12 @@ class Server:
                     ratio= formed_data.get('ratio')
                     self.change_aspect_ratio(vide_file_path, ratio)
 
+                elif formed_data.get('operation_id') == 4:
+                    mp3_file_name = self.file_name[:-4] + '.mp3'
+                    output_vide_path = os.path.join(OUTPUT_DIR, mp3_file_name)
+                    cmd = ffmpeg_cmds.extract_mp3(vide_file_path, output_vide_path)
+                    self.execute_commands(cmd)
+                    
                 self.delete_tempfile(vide_file_path)
 
     def execute_commands(seld, cmd):

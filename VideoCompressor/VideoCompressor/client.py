@@ -131,6 +131,12 @@ class Client:
             self.send_str_messages(req)
             status = self.receive_messages()
             print('アスペクト比の変更に{}'.format(status))
+        
+        elif int(operation) == 4:
+            req = {'operation_id': 4}
+            self.send_str_messages(req)
+            status = self.receive_messages()
+            print('MP3の抽出に変更に{}'.format(status))
 
 if __name__ == '__main__':
     client = Client()
