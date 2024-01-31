@@ -82,6 +82,14 @@ class Server:
 
                 self.delete_tempfile(vide_file_path)
 
+    def execute_commands(seld, cmd):
+        try:
+            subprocess.run(cmd)
+            data = {'status_code': 200}
+        except:
+            data = {'status_code': 500}
+        return data
+    
     def get_vide_info(self):
         # 動画のwidth, height, bit_rateを出力
         video_path = self.save_bytes_to_tempfile()
@@ -104,9 +112,8 @@ class Server:
         out_put_path = os.path.join(OUTPUT_DIR, 'compressed_'+self.file_name,)
 
         cmd = ffmpeg_cmds.compress(file_path, out_put_path, taraget_bite_rate)
-        subprocess.run(cmd)
-        data = {'status_code': 200}
-        self.client_socket.sendall(json.dumps(data).encode())
+        result = self.execute_commands(cmd)
+        self.client_socket.sendall(json.dumps(result).encode())
 
     def change_resolution(self, file_path, resolution):
         if resolution == 1:
@@ -119,19 +126,18 @@ class Server:
         output_path = os.path.join(OUTPUT_DIR, f'{width}*{height}_'+self.file_name)
 
         cmd = ffmpeg_cmds.change_resolution(file_path, width, height, output_path)
-        subprocess.run(cmd)
-        data = {'status_code': 200}
-        self.client_socket.sendall(json.dumps(data).encode())
+        result = self.execute_commands(cmd)
+        self.client_socket.sendall(json.dumps(result).encode())
 
     def change_aspect_ratio(self, file_path, ratio):
         video_info = self.get_vide_info()
         bit_rate = video_info['streams'][0]['bit_rate'] # 動画のビットレート取得
 
         out_put_path = os.path.join(OUTPUT_DIR, 'aspect_ratio_'+ratio+self.file_name,)
+
         cmd = ffmpeg_cmds.change_aspect_ratio(file_path, bit_rate, ratio, out_put_path)
-        subprocess.run(cmd)
-        data = {'status_code': 200}
-        self.client_socket.sendall(json.dumps(data).encode())
+        result = self.execute_commands(cmd)
+        self.client_socket.sendall(json.dumps(result).encode())
 
 if __name__ == '__main__':
     server = Server()
